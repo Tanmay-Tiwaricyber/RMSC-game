@@ -1,0 +1,160 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: linear-gradient(
+    135deg,
+    #ff6fd8,
+    #6a5cff,
+    #00ffd5,
+    #ffd86f
+  );
+  background-size: 400% 400%;
+  animation: bgMove 12s ease infinite;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+@keyframes bgMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Main App Card */
+.app {
+  width: 95%;
+  max-width: 420px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px);
+  border-radius: 28px;
+  padding: 22px;
+  box-shadow: 0 0 40px rgba(0,255,255,.4);
+}
+
+/* Headings */
+h1 {
+  font-size: 30px;
+  text-align: center;
+  background: linear-gradient(90deg,#ffe259,#ffa751,#7cf);
+  -webkit-background-clip: text;
+  color: transparent;
+  margin-bottom: 18px;
+}
+
+/* Inputs */
+input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 16px;
+  border: none;
+  margin: 8px 0;
+  font-size: 16px;
+  outline: none;
+  background: rgba(255,255,255,0.85);
+}
+
+/* Buttons */
+button {
+  width: 100%;
+  padding: 14px;
+  border-radius: 18px;
+  border: none;
+  margin: 10px 0;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  background: linear-gradient(135deg,#ffcc00,#ff4ecd,#6affff);
+  color: black;
+  transition: .25s;
+  box-shadow: 0 0 18px rgba(255,255,255,.4);
+}
+
+button:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 30px rgba(255,255,255,.7);
+}
+
+/* Sections */
+section {
+  animation: fadeIn .6s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Hidden */
+.hidden { display: none; }
+
+/* Lobby Player List */
+#playersList li {
+  list-style: none;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 14px;
+  background: linear-gradient(90deg,#ff9a9e,#fad0c4);
+  color: black;
+  font-weight: bold;
+}
+
+/* Role Card */
+.card {
+  width: 220px;
+  height: 280px;
+  margin: 22px auto;
+  border-radius: 26px;
+  background: linear-gradient(145deg,#fff,#ffd86f,#ff9aff);
+  color: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  box-shadow:
+    0 0 25px rgba(255,255,255,.9),
+    inset 0 0 15px rgba(255,255,255,.6);
+  animation: pop .7s ease;
+}
+
+@keyframes pop {
+  from { transform: scale(.6) rotate(-5deg); opacity: 0; }
+  to { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+/* Guess Area */
+#guessArea button {
+  background: linear-gradient(135deg,#6affb1,#4d96ff,#c77dff);
+  color: white;
+}
+
+/* Scoreboard */
+#scoreBoard li {
+  list-style: none;
+  margin: 6px 0;
+  padding: 10px;
+  border-radius: 14px;
+  background: linear-gradient(90deg,#84fab0,#8fd3f4);
+  color: black;
+  font-weight: bold;
+}
+
+/* Next Round Button */
+#nextBtn {
+  background: linear-gradient(135deg,#00ff88,#ffee00,#ff8800);
+}
+
+/* Mobile Friendly */
+@media(max-width:450px){
+  .app { padding: 16px; }
+  h1 { font-size: 26px; }
+}
