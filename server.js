@@ -38,7 +38,9 @@ io.on("connection", socket => {
       round: 0,
       state: "lobby",
       players: [{ id: socket.id, name, score: 0 }],
-      roles: {}
+      roles: {},
+      roundHistory: [],
+      chat: []
     };
 
     socket.join(code);
@@ -47,6 +49,9 @@ io.on("connection", socket => {
       roomCode: code,
       host: true
     });
+
+    socket.emit("chatHistory", rooms[code].chat);
+    socket.emit("roundHistory", rooms[code].roundHistory);
 
     io.to(code).emit("playerList", rooms[code].players);
     io.to(code).emit("waitingStatus", rooms[code].players.length);
@@ -80,6 +85,9 @@ io.on("connection", socket => {
       host: false
     });
 
+    socket.emit("chatHistory", room.chat);
+    socket.emit("roundHistory", room.roundHistory);
+
     io.to(roomCode).emit("playerList", room.players);
     io.to(roomCode).emit("waitingStatus", room.players.length);
   });
@@ -110,6 +118,29 @@ io.on("connection", socket => {
   =======================*/
   socket.on("mantriGuess", ({ roomCode, targetId }) => {
     resolveGuess(roomCode, targetId);
+  });
+
+  /* ======================
+      CHAT
+  =======================*/
+  socket.on("chatMessage", ({ roomCode, name, message }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    const cleanMessage = String(message || "").trim().slice(0, 240);
+    if (!cleanMessage) return;
+
+    const payload = {
+      id: socket.id,
+      name: String(name || "Player").slice(0, 24),
+      message: cleanMessage,
+      time: Date.now()
+    };
+
+    room.chat.push(payload);
+    room.chat = room.chat.slice(-50);
+
+    io.to(roomCode).emit("chatMessage", payload);
   });
 
   /* ======================
@@ -200,25 +231,45 @@ function resolveGuess(code, targetId) {
   const chorId = Object.keys(roles).find(
     id => roles[id] === "CHOR"
   );
+  const mantriId = Object.keys(roles).find(
+    id => roles[id] === "MANTRI"
+  );
+  const mantriCorrect = targetId === chorId;
+
+  const roundScores = {};
 
   room.players.forEach(p => {
     const r = roles[p.id];
+    let delta = 0;
 
-    if (r === "RAJA") p.score += 30;
-    if (r === "SIPAHI") p.score += 50;
+    if (r === "RAJA") delta = 1000;
+    if (r === "SIPAHI") delta = 250;
 
-    if (r === "MANTRI" && targetId === chorId)
-      p.score += 100;
+    if (r === "MANTRI") delta = mantriCorrect ? 500 : 0;
+    if (r === "CHOR") delta = mantriCorrect ? 0 : 500;
 
-    if (r === "CHOR" && targetId !== chorId)
-      p.score += 100;
+    p.score += delta;
+    roundScores[p.id] = delta;
   });
 
   room.state = "results";
 
+  const roundSummary = {
+    round: room.round,
+    scores: room.players.map(p => ({
+      id: p.id,
+      name: p.name,
+      delta: roundScores[p.id] || 0
+    }))
+  };
+  room.roundHistory.push(roundSummary);
+  room.roundHistory = room.roundHistory.slice(-20);
+
   io.to(code).emit("roundResult", {
     roles,
-    players: room.players
+    players: room.players,
+    roundScores,
+    roundHistory: room.roundHistory
   });
 }
 
