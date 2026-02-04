@@ -50,6 +50,16 @@ const scoreBoard = document.getElementById("scoreBoard");
 
 const nextBtn = document.getElementById("nextBtn");
 
+const lobbySide = document.getElementById("lobbySide");
+const gameSide = document.getElementById("gameSide");
+const roundHistory = document.getElementById("roundHistory");
+
+const chatPanel = document.getElementById("chatPanel");
+const chatMessages = document.getElementById("chatMessages");
+const chatInput = document.getElementById("chatInput");
+const chatSend = document.getElementById("chatSend");
+const chatToggle = document.getElementById("chatToggle");
+
 /* =============================
       BUTTON ACTIONS
 =============================*/
@@ -83,6 +93,53 @@ function simNextRound() {
 }
 
 /* =============================
+      TEMP STORAGE
+=============================*/
+
+function loadTempState() {
+  const savedName = sessionStorage.getItem("rmcs_name");
+  if (savedName) nameInput.value = savedName;
+}
+
+nameInput.addEventListener("input", () => {
+  sessionStorage.setItem("rmcs_name", nameInput.value.trim());
+});
+
+loadTempState();
+
+/* =============================
+      CHAT
+=============================*/
+
+function sendChat() {
+  const message = chatInput.value.trim();
+  if (!message || !roomCode) return;
+
+  socket.emit("chatMessage", {
+    roomCode,
+    name: myName || "Player",
+    message
+  });
+
+  chatInput.value = "";
+}
+
+chatSend.addEventListener("click", sendChat);
+chatInput.addEventListener("keydown", e => {
+  if (e.key === "Enter") sendChat();
+});
+
+function setChatCollapsed(collapsed) {
+  chatPanel.classList.toggle("collapsed", collapsed);
+  chatToggle.setAttribute("aria-expanded", String(!collapsed));
+}
+
+chatToggle.addEventListener("click", () => {
+  const collapsed = chatPanel.classList.contains("collapsed");
+  setChatCollapsed(!collapsed);
+});
+
+/* =============================
       SERVER EVENTS
 =============================*/
 
@@ -97,6 +154,9 @@ socket.on("roomJoined", data => {
 
   if (isHost) lobbyControls.classList.remove("hidden");
   else lobbyControls.classList.add("hidden");
+
+  chatPanel.classList.remove("hidden");
+  lobbySide.appendChild(chatPanel);
 });
 
 socket.on("roomError", msg => {
@@ -134,6 +194,21 @@ socket.on("waitingStatus", count => {
   }
 });
 
+socket.on("chatHistory", messages => {
+  chatMessages.innerHTML = "";
+  messages.forEach(msg => appendChatMessage(msg));
+  scrollChatToBottom();
+});
+
+socket.on("chatMessage", msg => {
+  appendChatMessage(msg);
+  scrollChatToBottom();
+});
+
+socket.on("roundHistory", history => {
+  renderRoundHistory(history);
+});
+
 /* =============================
       GAME START
 =============================*/
@@ -149,6 +224,8 @@ socket.on("yourRole", role => {
   guessArea.classList.add("hidden");
   scoreboardArea.classList.add("hidden");
   nextBtn.classList.add("hidden");
+
+  gameSide.appendChild(chatPanel);
 });
 
 socket.on("publicReveal", data => {
@@ -193,10 +270,10 @@ function showRole(role) {
   roleNameEl.textContent = role;
 
   const points = {
-    RAJA: 30,
-    MANTRI: 100,
-    SIPAHI: 50,
-    CHOR: 100
+    RAJA: 1000,
+    MANTRI: 500,
+    SIPAHI: 250,
+    CHOR: 0
   };
 
   rolePointsEl.textContent = `Points: +${points[role]}`;
@@ -221,24 +298,27 @@ socket.on("roundResult", data => {
   guessArea.classList.add("hidden");
   scoreboardArea.classList.remove("hidden");
 
-  renderScoreboard(data.players);
+  renderScoreboard(data.players, data.roundScores);
+  renderRoundHistory(data.roundHistory || []);
 });
 
-function renderScoreboard(players) {
+function renderScoreboard(players, roundScores = {}) {
   scoreBoard.innerHTML = "";
 
-  const max = Math.max(...players.map(p => p.score));
+  const max = Math.max(1, ...players.map(p => p.score));
 
   players.forEach(p => {
+    const delta = roundScores[p.id] || 0;
     const li = document.createElement("li");
     li.className = "score-item";
 
     li.innerHTML = `
-      <strong>${p.name}</strong>
+      <span class="score-name">${p.name}</span>
+      <span class="score-delta">+${delta}</span>
       <div class="score-bar-container">
         <div class="score-bar"></div>
       </div>
-      <span>${p.score}</span>
+      <strong>${p.score}</strong>
     `;
 
     scoreBoard.appendChild(li);
@@ -274,4 +354,67 @@ function buildGuessButtons(players) {
 
     guessButtons.appendChild(btn);
   });
+}
+
+/* =============================
+      ROUND HISTORY
+=============================*/
+
+function renderRoundHistory(history) {
+  roundHistory.innerHTML = "";
+
+  const recent = [...history].slice(-10).reverse();
+  recent.forEach(round => {
+    const li = document.createElement("li");
+    li.className = "round-item";
+
+    const scoreLine = round.scores
+      .map(item => `${item.name}: +${item.delta}`)
+      .join(" | ");
+
+    li.innerHTML = `
+      <strong>Round ${round.round}</strong>
+      <div class="round-scores">${scoreLine}</div>
+    `;
+
+    roundHistory.appendChild(li);
+  });
+}
+
+/* =============================
+      CHAT HELPERS
+=============================*/
+
+function appendChatMessage(msg) {
+  const wrapper = document.createElement("div");
+  wrapper.className = "chat-message";
+
+  const time = new Date(msg.time).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  wrapper.innerHTML = `
+    <div class="chat-meta">
+      <span>${msg.name}</span>
+      <span>${time}</span>
+    </div>
+    <div>${escapeHtml(msg.message)}</div>
+  `;
+
+  chatMessages.appendChild(wrapper);
+}
+
+function scrollChatToBottom() {
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function escapeHtml(str) {
+  return str.replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;"
+  }[char]));
 }
